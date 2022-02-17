@@ -3,6 +3,8 @@ from pygame.locals import *
 from pygame.math import Vector2 as vector
 from random import random
 
+pygame.time.get_ticks()
+
 pygame.init()
 
 clock = pygame.time.Clock()
@@ -13,6 +15,7 @@ screen = pygame.display.set_mode((0, 0), FULLSCREEN)
 screen_rect = screen.get_rect()
 
 update_rects = []
+
 fps = 0
 
 class boid:
@@ -48,26 +51,18 @@ class boid:
   def intPos(self):
     return int(self.x), int(self.y)
   
-  @property
-  def rect(self):
-    Rect = pygame.rect.Rect(self.pos, vector(boid.size, boid.size)*2)
-    Rect.center = self.pos-Rect.size
-    return Rect
-  
   def move(self):
     self.prevPos, self.prevVelocity = vector(self.pos), vector(self.velocity)
     self.pos += self.velocity
   
   def draw(self, color):
-    pygame.draw.circle(screen, color, self.intPos, boid.size)
-    update_rects.append(self.rect)
+    update_rects.append(pygame.draw.circle(screen, color, self.intPos, boid.size))
 
 def intVector(v):
   return int(v.x), int(v.y)
 
 boid1 = boid()
 print(boid1)
-print(boid1.rect)
 
 screen.fill(background)
 pygame.display.flip()
@@ -75,7 +70,7 @@ pygame.display.flip()
 while True:
   clock.tick(30)
   fps = str(round(clock.get_fps()))
-  update_rects = []
+  update_rects = [update_rects[1:]]
   if pygame.event.get(QUIT):
     break
   for event in pygame.event.get():
@@ -88,5 +83,5 @@ while True:
   boid1.draw(foreground)
   screen.blit(font.render(fps, 0, foreground), (0,0))
   update_rects.append(pygame.rect.Rect((0,0), font.size(fps)))
-  pygame.display.update(update_rects)
+  pygame.display.update(update_rects[0]+update_rects[1:])
 pygame.quit()

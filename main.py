@@ -16,7 +16,7 @@ class boid:
     if pos is None:
       pos = random()*screen_rect.w, random()*screen_rect.h
     self.pos = vector(pos)
-    self.velocity = 10-vector(random(), random())*20
+    self.velocity = vector(random(), random())*20-10
   
   def __str__(self):
     return "("+str(self.pos)+", "+str(self.velocity)+")"

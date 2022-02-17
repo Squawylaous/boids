@@ -16,7 +16,8 @@ class boid:
     if pos is None:
       pos = random()*screen_rect.w, random()*screen_rect.h
     self.pos = vector(pos)
-    self.velocity = vector(random(), random())*20-10
+    self.velocity = vector(random(), random())*20-(10,10)
+    self.prevPos, self.prevVelocity = vector(), vector()
   
   def __str__(self):
     return "("+str(self.pos)+", "+str(self.velocity)+")"
@@ -40,6 +41,10 @@ class boid:
   @property
   def intPos(self):
     return int(self.x), int(self.y)
+  
+  def move(self):
+    self.prevPos, self.prevVelocity = vector(self.pos), vector(self.velocity)
+    self.pos += self.velocity
   
   def draw(self, color):
     pygame.draw.circle(screen, color, self.intPos, 5)

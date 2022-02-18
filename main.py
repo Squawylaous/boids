@@ -13,7 +13,6 @@ screen = pygame.display.set_mode((0, 0), FULLSCREEN)
 screen_rect = screen.get_rect()
 
 update_rects = []
-
 fps = 0
 prevTime, currentTime = 0, 0
 
@@ -27,8 +26,6 @@ class boid:
   limit = pygame.rect.Rect((0, 0), vector(screen_rect.size)*0.75)
   limit.center = screen_rect.center
   speed_lim = 375.0
-  drawParticle = lambda self:
-    update_rects.append(pygame.draw.circle(screen, color, intVector(self.pos), int(boid.size*self.timeLeftPercent)))
   
   def __init__(self, pos=None, velocity=None, speed=250):
     if pos is None:
@@ -88,13 +85,17 @@ class boid:
     self.y = max(min(self.y, screen_rect.bottom), screen_rect.top)
   
   def draw(self, color=foreground):
-    particle(self.pos, 1000, boid.drawParticle)
+    particle(self.pos, 1000, boid.drawParticle, color, self.prevPos)
+    update_rects.append(pygame.draw.polygon(screen, color, map(intVector, [self.pos, self.prevPos])))
+  
+  def drawParticle(self, color, prevPos):
+    update_rects.append(pygame.draw.line(screen, color, intVector(self.pos), intVector(prevPos), 2))
 
 class particle:
   all = []
   
-  def __init__(self, pos, time, draw):
-    self.pos, self._draw = vector(pos), draw
+  def __init__(self, pos, time, draw, *drawArgs):
+    self.pos, self._draw, self.drawArgs = vector(pos), draw, drawArgs
     self.begin, self.lastFor, self.end = currentTime, time, time+currentTime
     particle.all.append(self)
   
@@ -115,7 +116,7 @@ class particle:
     return self.timeLeft/self.lastFor
   
   def draw(self):
-    self._draw(self)
+    self._draw(self, *self.drawArgs)
     if currentTime>self.end:
       particle.all.remove(self)
     
@@ -149,7 +150,7 @@ while True:
     Boid.draw()
   [*map(particle.draw, particle.all)]
   
-  screen.blit(font.render(str(round(fps)), 0, foreground), (0,0))
-  update_rects.append(pygame.rect.Rect((0,0), font.size(str(round(fps)))))
+  screen.blit(font.render(str(int(fps)), 0, foreground), (0,0))
+  update_rects.append(pygame.rect.Rect((0,0), font.size(str(int(fps)))))
   pygame.display.update(update_rects[0]+update_rects[1:])
 pygame.quit()

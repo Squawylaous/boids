@@ -22,14 +22,14 @@ class boid:
   size = 5
   limit = pygame.rect.Rect((0, 0), vector(screen_rect.size)*0.75)
   limit.center = screen_rect.center
-  speed_lim = 500.0
+  speed_lim = 750.0
   
   def __init__(self, pos=None):
     if pos is None:
       pos = vector(random()*screen_rect.w, random()*screen_rect.h)*0.5 +\
       vector(screen_rect.bottomright)*0.25
     self.pos = vector(pos)
-    self.velocity = vector(1).rotate(random()*360)*250
+    self.velocity = vector(1).rotate(random()*360)*500
     self.prevPos, self.prevVelocity = vector(), vector()
     boid.all.append(self)
   
@@ -56,23 +56,25 @@ class boid:
   def intPos(self):
     return int(self.x), int(self.y)
   
+  #separation: avarage of diff in pos
+  #alignment: avarage of velocity
+  #cohesion: avarage of realitive location
+  
   def edgePush(self):
-    amount = vector()
-    percent = 15/(fps if fps else 1)
+    amount = 500/(fps if fps else 1)
     if self.x < boid.limit.left:
-      amount.x = boid.limit.left-self.x
+      self.velocity.x += amount
     elif self.x > boid.limit.right:
-      amount.x = boid.limit.right-self.x
+      self.velocity.x -= amount
     if self.y < boid.limit.top:
-      amount.y = boid.limit.top-self.y
+      self.velocity.y += amount
     elif self.y > boid.limit.bottom:
-      amount.y = boid.limit.bottom-self.y
-    return amount*percent
+      self.velocity.y -= amount
   
   def move(self):
     self.prevPos, self.prevVelocity = vector(self.pos), vector(self.velocity)
+    self.edgePush()
     change = vector()
-    change += self.edgePush()
     self.velocity += change
     if self.velocity.length_squared() > boid.speed_lim*boid.speed_lim:
       self.velocity.scale_to_length(boid.speed_lim)

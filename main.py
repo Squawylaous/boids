@@ -22,7 +22,8 @@ def intVector(v):
 class boid:
   all = []
   tickTime = 0
-  size = 5
+  size = 15
+  degrees = 60
   limit = pygame.rect.Rect((0, 0), vector(screen_rect.size)*0.75)
   limit.center = screen_rect.center
   speed_lim = 375.0
@@ -86,7 +87,11 @@ class boid:
   
   def draw(self, color=foreground):
     particle(self.pos, 1000, boid.drawParticle, color, self.prevPos)
-    update_rects.append(pygame.draw.polygon(screen, color, map(intVector, [self.pos, self.prevPos])))
+    offset = self.velocity.normalize()*boid.size
+    corner1 = offset.rotate(boid.degrees/2-180)+self.pos
+    corner2 = offset.rotate(180-boid.degrees/2)+self.pos
+    tip = 2*self.pos-corner1.lerp(corner2, 0.5)
+    update_rects.append(pygame.draw.polygon(screen, color, [*map(intVector, [tip, corner1, corner2])]))
   
   def drawParticle(self, color, prevPos):
     update_rects.append(pygame.draw.line(screen, color, intVector(self.pos), intVector(prevPos), 2))

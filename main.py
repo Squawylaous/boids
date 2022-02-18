@@ -15,21 +15,28 @@ screen_rect = screen.get_rect()
 update_rects = []
 
 fps = 0
+prevTime, currentTime = 0, 0
+
+def intVector(v):
+  return int(v.x), int(v.y)
 
 class boid:
   all = []
-  prevTime, tickTime, currentTime = 0, 0, 0
+  tickTime = 0
   size = 5
   limit = pygame.rect.Rect((0, 0), vector(screen_rect.size)*0.75)
   limit.center = screen_rect.center
-  speed_lim = 750.0
+  speed_lim = 375.0
   
-  def __init__(self, pos=None):
+  def __init__(self, pos=None, velocity=None, speed=250):
     if pos is None:
       pos = vector(random()*screen_rect.w, random()*screen_rect.h)*0.5 +\
       vector(screen_rect.bottomright)*0.25
     self.pos = vector(pos)
-    self.velocity = vector(1).rotate(random()*360)*500
+    if velocity is None:
+      self.velocity = vector(1,0).rotate(random()*360)*speed
+    else:
+      self.velocity = vector(velocity)
     self.prevPos, self.prevVelocity = vector(), vector()
     boid.all.append(self)
   
@@ -51,10 +58,6 @@ class boid:
   @y.setter
   def y(self, value):
     self.pos.y = value
-  
-  @property
-  def intPos(self):
-    return int(self.x), int(self.y)
   
   #separation: avarage of diff in pos
   #alignment: avarage of velocity
@@ -78,22 +81,40 @@ class boid:
     self.velocity += change
     if self.velocity.length_squared() > boid.speed_lim*boid.speed_lim:
       self.velocity.scale_to_length(boid.speed_lim)
-    self.pos += self.velocity*(boid.currentTime-boid.prevTime)/1000
+    self.pos += self.velocity*(currentTime-prevTime)/1000
     self.x = max(min(self.x, screen_rect.right), screen_rect.left)
     self.y = max(min(self.y, screen_rect.bottom), screen_rect.top)
   
-  def draw(self, color):
-    update_rects.append(pygame.draw.circle(screen, color, self.intPos, boid.size))
+  def draw(self, color=foreground):
+    particle(self.pos, 5000, lambda self:
+      update_rects.append(pygame.draw.circle(screen, color, intVector(self.pos), boid.size)))
 
-def intVector(v):
-  return int(v.x), int(v.y)
+class particle:
+  all = []
+  
+  def __init__(self, pos, time, draw):
+    self.pos, self._draw = vector(pos), draw
+    self.begin, self.lastFor, self.end = currentTime, time, time+currentTime
+    self.index = len(particle.all)
+    particle.all.append(self)
+  
+  @property
+  def time(self):
+    return currentTime - self.begin
+  
+  @property
+  def timePercent(self):
+    return self.time/self.lastFor
+  
+  def draw(self):
+    self._draw(self)
 
 for i in range(5): boid()
 
 screen.fill(background)
 pygame.display.flip()
 
-boid.currentTime = pygame.time.get_ticks()
+currentTime = pygame.time.get_ticks()
 while True:
   clock.tick(-1)
   fps = clock.get_fps()
@@ -107,12 +128,14 @@ while True:
         pygame.event.post(pygame.event.Event(QUIT))
   
   screen.fill(background)
-  boid.prevTime, boid.currentTime = boid.currentTime, pygame.time.get_ticks()
-  boid.tickTime = (boid.currentTime-boid.prevTime)
+  
+  prevTime, currentTime = currentTime, pygame.time.get_ticks()
+  boid.tickTime = (currentTime-prevTime)
   
   for Boid in boid.all:
     Boid.move()
-    Boid.draw(foreground)
+    Boid.draw()
+  [*map(particle.draw, particle.all)]
   
   screen.blit(font.render(str(round(fps)), 0, foreground), (0,0))
   update_rects.append(pygame.rect.Rect((0,0), font.size(str(round(fps)))))

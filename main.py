@@ -92,43 +92,11 @@ class boid:
     self.pos += self.velocity
   
   def draw(self, color=foreground):
-    particle(self.pos, 25, boid.drawParticle, color, self.prevPos)
     offset = self.velocity.normalize()*boid.size
     corner1 = offset.rotate(boid.degrees/2-180)+self.pos
     corner2 = offset.rotate(180-boid.degrees/2)+self.pos
     tip = 2*self.pos-corner1.lerp(corner2, 0.5)
     update_rects.append(pygame.draw.polygon(screen, color, [*map(intVector, [tip, corner1, corner2])]))
-  
-  def drawParticle(self, color, prevPos):
-    update_rects.append(pygame.draw.line(screen, color, intVector(self.pos), intVector(prevPos), 2))
-
-class particle:
-  all = []
-  
-  def __init__(self, pos, time, draw, *drawArgs):
-    self.pos, self._draw, self.drawArgs = vector(pos), draw, drawArgs
-    self.time, self.totalTime = 0, time
-    particle.all.append(self)
-  
-  @property
-  def timeLeft(self):
-    return self.totalTime - self.time
-  
-  @property
-  def timePercent(self):
-    return self.time/self.totalTime
-  
-  @property
-  def timeLeftPercent(self):
-    return self.timeLeft/self.totalTime
-  
-  def draw(self):
-    if drawLines:
-      self._draw(self, *self.drawArgs)
-    self.time += 1
-    if self.time>self.totalTime:
-      particle.all.remove(self)
-    
 
 for i in range(100): boid()
 
@@ -156,7 +124,6 @@ while True:
   prevTime, currentTime = currentTime, pygame.time.get_ticks()
   [*map(boid.move, boid.all)]
   [*map(boid.draw, boid.all)]
-  [*map(particle.draw, particle.all)]
   
   if fps != float("inf"):
     screen.blit(font.render(str(int(fps)), 0, foreground), (0,0))

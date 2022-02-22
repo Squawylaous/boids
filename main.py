@@ -2,6 +2,7 @@ import pygame
 from pygame.locals import *
 from pygame.math import Vector2 as vector
 from random import random
+from math import ceil, floor
 
 pygame.init()
 
@@ -12,29 +13,26 @@ foreground = Color(255, 255, 255)
 screen = pygame.display.set_mode((0, 0), FULLSCREEN)
 screen_rect = screen.get_rect()
 
-update_rects = []
+update_rects = [[]]
 fps = 0
-prevTime, currentTime = 0, 0
+drawLines = False
 
 def intVector(v):
   return int(v.x), int(v.y)
 
 class boid:
   all = []
-  tickTime = 0
-  size = 15
-  degrees = 60
-  limit = pygame.rect.Rect((0, 0), vector(screen_rect.size)*0.75)
+  size, degrees = 7.5, 60
+  limit = pygame.rect.Rect((0,0), screen_rect.size-vector(200, 200))
   limit.center = screen_rect.center
-  speed_lim = 375.0
+  speed_lim, sightRange = 15, 100**2
   
-  def __init__(self, pos=None, velocity=None, speed=250):
+  def __init__(self, pos=None, velocity=None):
     if pos is None:
-      pos = vector(random()*screen_rect.w, random()*screen_rect.h)*0.5 +\
-      vector(screen_rect.bottomright)*0.25
+      pos = vector(random()*screen_rect.w, random()*screen_rect.h)
     self.pos = vector(pos)
     if velocity is None:
-      self.velocity = vector(1,0).rotate(random()*360)*speed
+      self.velocity = vector(1,0).rotate(random()*360)*(random()*10 - 5)
     else:
       self.velocity = vector(velocity)
     self.prevPos, self.prevVelocity = vector(), vector()
@@ -59,12 +57,21 @@ class boid:
   def y(self, value):
     self.pos.y = value
   
-  #separation: avarage of diff in pos
-  #alignment: avarage of velocity
-  #cohesion: avarage of realitive location
+  def separation(self, others):
+    others = [i for i in others if self.pos.distance_squared_to(i.pos) < 20*20]
+    change = sum([self.pos - i.pos for i in others], vector())
+    return change * 0.05
+  
+  def alignment(self, others):
+    change = sum([i.velocity for i in others], vector())/len(others) - self.velocity
+    return change * 0.05
+  
+  def cohesion(self, others):
+    change = sum([i.pos for i in others], vector())/len(others) - self.pos
+    return change * 0.005
   
   def edgePush(self):
-    amount = 500/(fps if fps else 1)
+    amount = 1.5
     if self.x < boid.limit.left:
       self.velocity.x += amount
     elif self.x > boid.limit.right:
@@ -73,20 +80,19 @@ class boid:
       self.velocity.y += amount
     elif self.y > boid.limit.bottom:
       self.velocity.y -= amount
-  
+
   def move(self):
     self.prevPos, self.prevVelocity = vector(self.pos), vector(self.velocity)
     self.edgePush()
-    change = vector()
-    self.velocity += change
+    others = [i for i in boid.all if (i is not self and self.pos.distance_squared_to(i.pos)<boid.sightRange)]
+    if others:
+      self.velocity += sum(map(lambda x:getattr(self,x)(others), ["separation","alignment","cohesion"]), vector())
     if self.velocity.length_squared() > boid.speed_lim*boid.speed_lim:
       self.velocity.scale_to_length(boid.speed_lim)
-    self.pos += self.velocity*(currentTime-prevTime)/1000
-    self.x = max(min(self.x, screen_rect.right), screen_rect.left)
-    self.y = max(min(self.y, screen_rect.bottom), screen_rect.top)
+    self.pos += self.velocity
   
   def draw(self, color=foreground):
-    particle(self.pos, 1000, boid.drawParticle, color, self.prevPos)
+    particle(self.pos, 25, boid.drawParticle, color, self.prevPos)
     offset = self.velocity.normalize()*boid.size
     corner1 = offset.rotate(boid.degrees/2-180)+self.pos
     corner2 = offset.rotate(180-boid.degrees/2)+self.pos
@@ -101,32 +107,30 @@ class particle:
   
   def __init__(self, pos, time, draw, *drawArgs):
     self.pos, self._draw, self.drawArgs = vector(pos), draw, drawArgs
-    self.begin, self.lastFor, self.end = currentTime, time, time+currentTime
+    self.time, self.totalTime = 0, time
     particle.all.append(self)
   
   @property
-  def time(self):
-    return currentTime - self.begin
-  
-  @property
   def timeLeft(self):
-    return self.end - currentTime
+    return self.totalTime - self.time
   
   @property
   def timePercent(self):
-    return self.time/self.lastFor
+    return self.time/self.totalTime
   
   @property
   def timeLeftPercent(self):
-    return self.timeLeft/self.lastFor
+    return self.timeLeft/self.totalTime
   
   def draw(self):
-    self._draw(self, *self.drawArgs)
-    if currentTime>self.end:
+    if drawLines:
+      self._draw(self, *self.drawArgs)
+    self.time += 1
+    if self.time>self.totalTime:
       particle.all.remove(self)
     
 
-for i in range(5): boid()
+for i in range(100): boid()
 
 screen.fill(background)
 pygame.display.flip()
@@ -134,7 +138,7 @@ pygame.display.flip()
 currentTime = pygame.time.get_ticks()
 
 while True:
-  clock.tick(31-1)
+  clock.tick(-1)
   fps = clock.get_fps()
   update_rects = [update_rects[1:]]
   
@@ -142,20 +146,20 @@ while True:
     break
   for event in pygame.event.get():
     if event.type == KEYDOWN:
-      if event.key == K_ESCAPE:
+      if event.key == K_SPACE:
+        drawLines = not drawLines
+      elif event.key == K_ESCAPE:
         pygame.event.post(pygame.event.Event(QUIT))
   
   screen.fill(background)
   
   prevTime, currentTime = currentTime, pygame.time.get_ticks()
-  boid.tickTime = (currentTime-prevTime)
-  
-  for Boid in boid.all:
-    Boid.move()
-    Boid.draw()
+  [*map(boid.move, boid.all)]
+  [*map(boid.draw, boid.all)]
   [*map(particle.draw, particle.all)]
   
-  screen.blit(font.render(str(int(fps)), 0, foreground), (0,0))
-  update_rects.append(pygame.rect.Rect((0,0), font.size(str(int(fps)))))
+  if fps != float("inf"):
+    screen.blit(font.render(str(int(fps)), 0, foreground), (0,0))
+    update_rects.append(pygame.rect.Rect((0,0), font.size(str(int(fps)))))
   pygame.display.update(update_rects[0]+update_rects[1:])
 pygame.quit()

@@ -2,7 +2,6 @@ import pygame
 from pygame.locals import *
 from pygame.math import Vector2 as vector
 from random import random
-from math import ceil, floor
 
 pygame.init()
 
